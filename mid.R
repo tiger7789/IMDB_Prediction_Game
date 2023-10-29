@@ -1,3 +1,5 @@
+
+# imdb_data=read.csv("/Users/sheidamajidi/Desktop/Fall2023Courses/MGSC661/Midterm/Data/IMDB_data_Fall_2023.csv")
 imdb_data=read.csv("/Users/sheidamajidi/Desktop/Fall2023Courses/MGSC661/Midterm/Data/IMDB_data_Fall_2023.csv")
 attach(imdb_data) 
 View(imdb_data)
