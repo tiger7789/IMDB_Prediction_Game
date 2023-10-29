@@ -21,7 +21,7 @@ summary(actor2_star_meter)
 summary(actor3_star_meter)
 summary(nb_faces)
 summary(movie_meter_IMDBpro)
-#... 
+
 # Boxplots
 boxplot(imdb_score)
 boxplot(movie_budget)
@@ -167,6 +167,8 @@ residualPlots(reg4)
 
 # Step 4: Exploring polynomial regression model
 
+# Step 4-1 : Polynomial regression of degree 2 to 6 - between each two variables
+
 # Remove non-numeric columns for simplicity.
 numeric_cols = sapply(imdb_data, is.numeric)
 numeric_data = imdb_data[, numeric_cols]
@@ -189,11 +191,20 @@ for (col_name in names(numeric_data)) {
 
 #################################################### R-square matrix:
 
+# Remove non-numeric columns for simplicity. If you want to include factors, you'd need to handle them separately.
 numeric_cols = sapply(imdb_data, is.numeric)
 numeric_data = imdb_data[, numeric_cols]
 
+# List of columns to exclude
+exclude_cols = c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime")
+
+# Drop the specified columns
+numeric_data = numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
 # Remove 'imdb_score' from the columns to be regressed upon, as it's the response variable.
 numeric_data$imdb_score = NULL
+
 # Initialize a matrix to store R-squared values
 r_squared_matrix = matrix(0, nrow=length(names(numeric_data)), ncol=5,
                            dimnames=list(names(numeric_data), 2:6))
@@ -210,15 +221,347 @@ for (col_name in names(numeric_data)) {
   }
 }
 
-# Identify the variable and degree with the highest R-squared
-best_variable = which(r_squared_matrix == max(r_squared_matrix), arr.ind=TRUE)
+# Convert matrix to a long-format data frame for easy sorting and grouping
+library(tidyr)
+r_squared_df = as.data.frame(as.table(r_squared_matrix))
+colnames(r_squared_df) = c("Variable", "Degree", "R_Squared")
 
-cat("The variable with the highest R-squared is:", rownames(best_variable), 
-    "with a polynomial degree of:", colnames(best_variable), 
-    "and an R-squared of:", max(r_squared_matrix), "\n")
+# Group by variable and select the highest R-squared for each variable
+library(dplyr)
+best_r_squared_per_variable = r_squared_df %>%
+  group_by(Variable) %>%
+  top_n(1, wt=R_Squared)
+
+# Print the sorted dataframe
+print(best_r_squared_per_variable)
+
+# Step 4-2 : Polynomial regression of degree 2 to 6 - between each three variables
+
+# Remove non-numeric columns and the specified columns
+numeric_cols = sapply(imdb_data, is.numeric)
+numeric_data = imdb_data[, numeric_cols]
+
+# List of columns to exclude
+exclude_cols = c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
+
+# Drop the specified columns
+numeric_data = numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 3 variables
+combinations = combn(names(numeric_data), 3)
+
+# Initialize a data frame to store R-squared values
+r_squared_df = data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo = combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms = sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, ")")
+    })
+    poly_terms = paste(terms, collapse = " + ")
+    formula_str = paste("imdb_score ~", poly_terms)
+    
+    model = lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df = rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Degree=degree, 
+                                                   R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Sort by R-squared in descending order
+library(dplyr)
+sorted_r_squared_df = r_squared_df %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(sorted_r_squared_df)
+
+######################################### Group each set together
+
+# Remove non-numeric columns and the specified columns
+numeric_cols = sapply(imdb_data, is.numeric)
+numeric_data = imdb_data[, numeric_cols]
+
+# List of columns to exclude
+exclude_cols = c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
+
+# Drop the specified columns
+numeric_data=numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 3 variables
+combinations=combn(names(numeric_data), 3)
+
+# Initialize a data frame to store R-squared values
+r_squared_df=data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo=combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms=sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, ")")
+    })
+    poly_terms=paste(terms, collapse = " + ")
+    formula_str=paste("imdb_score ~", poly_terms)
+    
+    model=lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df <- rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Degree=degree, 
+                                                   R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Group by the variable combination and keep only the row with the highest R-squared for each combination
+library(dplyr)
+best_r_squared_per_combo=r_squared_df %>%
+  group_by(Variable1, Variable2, Variable3) %>%
+  top_n(1, wt=R_Squared) %>%
+  ungroup() %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(best_r_squared_per_combo)
+
+# Step 4-3: Polynomial regression of degree 2 to 6 - between each four variables
+
+# Remove non-numeric columns and the specified columns
+numeric_cols=sapply(imdb_data, is.numeric)
+numeric_data=imdb_data[, numeric_cols]
+
+# List of columns to exclude
+exclude_cols=c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
+
+# Drop the specified columns
+numeric_data=numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 4 variables
+combinations=combn(names(numeric_data), 4)
+
+# Initialize a data frame to store R-squared values
+r_squared_df=data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Variable4=character(0), 
+                           Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo=combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms=sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, ")*I(", combo[4], "^", d, ")")
+    })
+    poly_terms=paste(terms, collapse = " + ")
+    formula_str=paste("imdb_score ~", poly_terms)
+    
+    model=lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df=rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Variable4=combo[4], 
+                                                   Degree=degree, R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Group by the variable combination and keep only the row with the highest R-squared for each combination
+library(dplyr)
+best_r_squared_per_combo=r_squared_df %>%
+  group_by(Variable1, Variable2, Variable3, Variable4) %>%
+  top_n(1, wt=R_Squared) %>%
+  ungroup() %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(best_r_squared_per_combo)
+
+# Step 4-4: five variables
 
 
+# Remove non-numeric columns and the specified columns
+numeric_cols=sapply(imdb_data, is.numeric)
+numeric_data=imdb_data[, numeric_cols]
+
+# List of columns to exclude
+exclude_cols=c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
+
+# Drop the specified columns
+numeric_data=numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 5 variables
+combinations=combn(names(numeric_data), 5)
+
+# Initialize a data frame to store R-squared values
+r_squared_df=data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Variable4=character(0), 
+                           Variable5=character(0), Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo=combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms=sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, 
+             ")*I(", combo[4], "^", d, ")*I(", combo[5], "^", d, ")")
+    })
+    poly_terms=paste(terms, collapse = " + ")
+    formula_str=paste("imdb_score ~", poly_terms)
+    
+    model=lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df=rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Variable4=combo[4], 
+                                                   Variable5=combo[5], Degree=degree, 
+                                                   R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Group by the variable combination and keep only the row with the highest R-squared for each combination
+library(dplyr)
+best_r_squared_per_combo <- r_squared_df %>%
+  group_by(Variable1, Variable2, Variable3, Variable4, Variable5) %>%
+  top_n(1, wt=R_Squared) %>%
+  ungroup() %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(best_r_squared_per_combo)
+
+# Step 4-5: six variables
 
 
+# Remove non-numeric columns and the specified columns
+numeric_cols=sapply(imdb_data, is.numeric)
+numeric_data=imdb_data[, numeric_cols]
 
+# List of columns to exclude
+exclude_cols=c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
 
+# Drop the specified columns
+numeric_data=numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 6 variables
+combinations=combn(names(numeric_data), 6)
+
+# Initialize a data frame to store R-squared values
+r_squared_df=data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Variable4=character(0), 
+                           Variable5=character(0), Variable6=character(0), 
+                           Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo=combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms=sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, 
+             ")*I(", combo[4], "^", d, ")*I(", combo[5], "^", d, ")*I(", combo[6], "^", d, ")")
+    })
+    poly_terms=paste(terms, collapse = " + ")
+    formula_str=paste("imdb_score ~", poly_terms)
+    
+    model=lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df=rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Variable4=combo[4], 
+                                                   Variable5=combo[5], Variable6=combo[6], 
+                                                   Degree=degree, R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Group by the variable combination and keep only the row with the highest R-squared for each combination
+library(dplyr)
+best_r_squared_per_combo=r_squared_df %>%
+  group_by(Variable1, Variable2, Variable3, Variable4, Variable5, Variable6) %>%
+  top_n(1, wt=R_Squared) %>%
+  ungroup() %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(best_r_squared_per_combo)
+
+# Step 4-6: Seven variables
+
+# Remove non-numeric columns and the specified columns
+numeric_cols=sapply(imdb_data, is.numeric)
+numeric_data=imdb_data[, numeric_cols]
+
+# List of columns to exclude
+exclude_cols=c("action", "adventure", "scifi", "thriller", "musical", "romance", 
+                  "western", "sport", "horror", "drama", "war", "animation", "crime", 
+                  "movie_id", "imdb_score") # Excluding movie_id and imdb_score
+
+# Drop the specified columns
+numeric_data=numeric_data[, !(names(numeric_data) %in% exclude_cols)]
+
+# Generate all possible combinations of 7 variables
+combinations=combn(names(numeric_data), 7)
+
+# Initialize a data frame to store R-squared values
+r_squared_df=data.frame(Variable1=character(0), Variable2=character(0), 
+                           Variable3=character(0), Variable4=character(0), 
+                           Variable5=character(0), Variable6=character(0),
+                           Variable7=character(0), Degree=integer(0), R_Squared=numeric(0))
+
+# Loop through each combination and fit polynomial regression models
+for (i in 1:ncol(combinations)) {
+  combo=combinations[, i]
+  
+  for (degree in 2:6) {
+    # Construct polynomial formula
+    terms=sapply(1:degree, function(d) {
+      paste0("I(", combo[1], "^", d, ")*I(", combo[2], "^", d, ")*I(", combo[3], "^", d, 
+             ")*I(", combo[4], "^", d, ")*I(", combo[5], "^", d, ")*I(", combo[6], "^", d, 
+             ")*I(", combo[7], "^", d, ")")
+    })
+    poly_terms=paste(terms, collapse = " + ")
+    formula_str=paste("imdb_score ~", poly_terms)
+    
+    model=lm(as.formula(formula_str), data=imdb_data)
+    
+    # Store the R-squared value in the data frame
+    r_squared_df=rbind(r_squared_df, data.frame(Variable1=combo[1], Variable2=combo[2], 
+                                                   Variable3=combo[3], Variable4=combo[4], 
+                                                   Variable5=combo[5], Variable6=combo[6], 
+                                                   Variable7=combo[7], Degree=degree, 
+                                                   R_Squared=summary(model)$r.squared))
+  }
+}
+
+# Group by the variable combination and keep only the row with the highest R-squared for each combination
+library(dplyr)
+best_r_squared_per_combo=r_squared_df %>%
+  group_by(Variable1, Variable2, Variable3, Variable4, Variable5, Variable6, Variable7) %>%
+  top_n(1, wt=R_Squared) %>%
+  ungroup() %>%
+  arrange(desc(R_Squared))
+
+# Print the sorted dataframe
+print(best_r_squared_per_combo)
