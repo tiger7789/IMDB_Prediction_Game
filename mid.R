@@ -21,7 +21,7 @@ summary(actor2_star_meter)
 summary(actor3_star_meter)
 summary(nb_faces)
 summary(movie_meter_IMDBpro)
-
+#... 
 # Boxplots
 boxplot(imdb_score)
 boxplot(movie_budget)
