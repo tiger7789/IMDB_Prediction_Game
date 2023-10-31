@@ -4,7 +4,7 @@ imdb_data=read.csv("/Users/sheidamajidi/Desktop/Fall2023Courses/MGSC661/Midterm/
 attach(imdb_data) 
 View(imdb_data)
 ###################################################################
-### Test ### again
+### Test ### again ##
 # Lec 2
 
 # Step 1 : Descriptive Analysis of Data:
