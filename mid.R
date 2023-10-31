@@ -5,7 +5,7 @@ attach(imdb_data)
 View(imdb_data)
 ###################################################################
 ### Test ### again ##
-# Lec 2
+# L3ec 2
 
 # Step 1 : Descriptive Analysis of Data:
 
